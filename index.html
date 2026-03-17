@@ -48,7 +48,7 @@
     
     <div id="howto">
         <h2>HOW TO PLAY</h2>
-        <p>降ってくる<span style="color:#ffff00; font-weight:bold;">マカロン</span>を<br>クリックやタップでキャッチ！</p>
+        <p>降ってくる&nbsp;くぅちゃんの大好きな<span style="color:#ffff00; font-weight:bold;">マカロン</span>を<br>クリックでキャッチ！</p>
     </div>
 
     <div id="controls">
@@ -77,6 +77,15 @@
 
         const textureLoader = new THREE.TextureLoader();
         const textures = Array.from({length: 7}, (_, i) => textureLoader.load(`${i + 1}.png`));
+
+        // ベストスコアを保存する関数
+        function updateBestScore() {
+            const currentBest = parseInt(localStorage.getItem('marshmallow_high_score') || 0);
+            if (score > currentBest) {
+                localStorage.setItem('marshmallow_high_score', score);
+                document.getElementById('best-score').innerText = score;
+            }
+        }
 
         function init() {
             const saved = localStorage.getItem('marshmallow_high_score');
@@ -111,11 +120,10 @@
                 if(shadow) shadow.position.x = model.position.x;
             }
             marshmallows.forEach((m, i) => {
-                // 【ヒラヒラ落ちる設定に書き換え】
-                m.position.y -= 0.025; // 落下速度
-                m.position.x += Math.sin(Date.now() / 400 + i) * 0.015; // 左右ゆらゆら
-                m.rotation.x += 0.08; // X軸回転
-                m.rotation.z += 0.02; // Z軸の傾き追加
+                m.position.y -= 0.025;
+                m.position.x += Math.sin(Date.now() / 400 + i) * 0.015;
+                m.rotation.x += 0.08;
+                m.rotation.z += 0.02;
                 
                 if (m.position.y < -2) { scene.remove(m); marshmallows.splice(i, 1); }
             });
@@ -131,7 +139,10 @@
 
             const hits = ray.intersectObjects(marshmallows);
             if (hits.length > 0) {
-                score += 100; document.getElementById('score').innerText = score;
+                score += 100; 
+                document.getElementById('score').innerText = score;
+                updateBestScore(); // キャッチするたびにベストスコア判定
+
                 const g = document.getElementById('gao');
                 g.style.left = (x - 80) + 'px'; g.style.top = (y - 80) + 'px';
                 g.style.display = 'none'; void g.offsetWidth; g.style.display = 'block';
@@ -178,7 +189,11 @@
             
             if (!bgMusic) {
                 bgMusic = new Audio('music.mp3');
-                bgMusic.onended = () => { gameActive = false; document.getElementById('retry-button').style.display = 'block'; };
+                bgMusic.onended = () => { 
+                    gameActive = false; 
+                    updateBestScore(); // 音楽終了時にも保存
+                    document.getElementById('retry-button').style.display = 'block'; 
+                };
             }
             bgMusic.volume = volState;
             bgMusic.muted = isMuted;
@@ -190,7 +205,11 @@
                 const min = Math.floor(timeLeft / 60);
                 const sec = timeLeft % 60;
                 document.getElementById('time-left').innerText = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-                if (timeLeft <= 0) { clearInterval(timerInterval); gameActive = false; }
+                if (timeLeft <= 0) { 
+                    clearInterval(timerInterval); 
+                    gameActive = false; 
+                    updateBestScore(); // タイマー終了時にも保存
+                }
             }, 1000);
 
             spawnTimer = setInterval(() => {
