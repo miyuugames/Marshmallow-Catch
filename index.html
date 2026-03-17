@@ -61,7 +61,7 @@
             if (saved) document.getElementById('best-score').innerText = saved;
             scene = new THREE.Scene(); scene.background = new THREE.Color(0x0a0a1a);
             camera = new THREE.PerspectiveCamera(65, window.innerWidth/window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 0.6, 5); camera.lookAt(0, 1.2, 0);
+            camera.position.set(0, 0.6, 6); camera.lookAt(0, 1.2, 0); // カメラを少し引く
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
@@ -78,16 +78,17 @@
         function animate() {
             requestAnimationFrame(animate);
             if (model) {
-                const limit = window.innerWidth > window.innerHeight ? 2.8 : 1.8;
+                const limit = window.innerWidth > window.innerHeight ? 3.0 : 2.0;
                 model.position.x += (mouse.x * limit - model.position.x) * 0.15;
                 if(shadow) shadow.position.x = model.position.x;
             }
             if (gameActive) {
                 marshmallows.forEach((m, i) => {
-                    m.position.y -= 0.025;
+                    m.position.y -= 0.035; // 少し速度アップ
                     m.position.x += Math.sin(Date.now() / 400 + i) * 0.015;
                     m.rotation.x += 0.08; m.rotation.z += 0.02;
-                    if (m.position.y < -5) { scene.remove(m); marshmallows.splice(i, 1); }
+                    // 🚩消去判定をさらに深くして、カメラ外に完全に出るまで消さない
+                    if (m.position.y < -8) { scene.remove(m); marshmallows.splice(i, 1); }
                 });
             }
             renderer.render(scene, camera);
@@ -98,7 +99,7 @@
             const ray = new THREE.Raycaster();
             const pos = new THREE.Vector2((x/window.innerWidth)*2-1, -(y/window.innerHeight)*2+1);
             ray.setFromCamera(pos, camera);
-            ray.params.Mesh.threshold = 0.1;
+            ray.params.Mesh.threshold = 0.2; // 少し判定を広げてキャッチしやすく
             const hits = ray.intersectObjects(marshmallows);
             if (hits.length > 0) {
                 const target = hits[0].object;
@@ -113,7 +114,6 @@
         window.addEventListener('mousemove', (e) => { mouse.x = (e.clientX/window.innerWidth)*2-1; });
         window.addEventListener('mousedown', (e) => { if (e.target.tagName !== 'BUTTON') performCatch(e.clientX, e.clientY); });
         window.addEventListener('touchstart', (e) => { if (e.target.tagName !== 'BUTTON') { const t = e.touches[0]; mouse.x = (t.clientX/window.innerWidth)*2-1; performCatch(t.clientX, t.clientY); } }, { passive: false });
-
         document.getElementById('vol-btn').addEventListener('click', () => { volState = (volState === 0.1) ? 0.5 : 0.1; document.getElementById('vol-btn').innerText = (volState === 0.1) ? "VOL: LOW" : "VOL: HIGH"; if (bgMusic) bgMusic.volume = volState; });
         document.getElementById('mute-btn').addEventListener('click', () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "MUTE: ON" : "MUTE: OFF"; if (bgMusic) bgMusic.muted = isMuted; });
         document.getElementById('stop-btn').addEventListener('click', () => { location.reload(); });
@@ -137,7 +137,8 @@
             spawnTimer = setInterval(() => {
                 if(!gameActive) return;
                 const m = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshBasicMaterial({ map: textures[Math.floor(Math.random() * 7)], transparent: true }));
-                m.position.set((Math.random() - 0.5) * (window.innerWidth > window.innerHeight ? 8 : 4), 6, 0.5);
+                // 🚩奥行きを 1.5（より手前）に設定。これでカメラの視界から消えにくくなります
+                m.position.set((Math.random() - 0.5) * (window.innerWidth > window.innerHeight ? 8 : 4), 6, 1.5);
                 scene.add(m); marshmallows.push(m);
             }, 800);
         });
