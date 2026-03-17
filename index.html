@@ -44,7 +44,7 @@
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        let scene, camera, renderer, model, shadow, score = 0, marshmallows = [], gameActive = false, isMuted = false, volState = 0.1, mouse = new THREE.Vector2(), spawnTimer, bgMusic = null, timeLeft = 211;
+        let scene, camera, renderer, model, shadow, score = 0, marshmallows = [], gameActive = false, isMuted = false, volState = 0.1, mouse = new THREE.Vector2(), spawnTimer, timerInterval, bgMusic = null, timeLeft = 211;
         const textureLoader = new THREE.TextureLoader();
         const textures = Array.from({length: 7}, (_, i) => textureLoader.load(`${i + 1}.png`));
 
@@ -82,12 +82,14 @@
                 model.position.x += (mouse.x * limit - model.position.x) * 0.15;
                 if(shadow) shadow.position.x = model.position.x;
             }
-            marshmallows.forEach((m, i) => {
-                m.position.y -= 0.025;
-                m.position.x += Math.sin(Date.now() / 400 + i) * 0.015;
-                m.rotation.x += 0.08; m.rotation.z += 0.02;
-                if (m.position.y < -5) { scene.remove(m); marshmallows.splice(i, 1); }
-            });
+            if (gameActive) {
+                marshmallows.forEach((m, i) => {
+                    m.position.y -= 0.025;
+                    m.position.x += Math.sin(Date.now() / 400 + i) * 0.015;
+                    m.rotation.x += 0.08; m.rotation.z += 0.02;
+                    if (m.position.y < -5) { scene.remove(m); marshmallows.splice(i, 1); }
+                });
+            }
             renderer.render(scene, camera);
         }
 
@@ -114,14 +116,30 @@
 
         document.getElementById('vol-btn').addEventListener('click', () => { volState = (volState === 0.1) ? 0.5 : 0.1; document.getElementById('vol-btn').innerText = (volState === 0.1) ? "VOL: LOW" : "VOL: HIGH"; if (bgMusic) bgMusic.volume = volState; });
         document.getElementById('mute-btn').addEventListener('click', () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "MUTE: ON" : "MUTE: OFF"; if (bgMusic) bgMusic.muted = isMuted; });
+        document.getElementById('stop-btn').addEventListener('click', () => { location.reload(); });
 
         document.getElementById('start-button').addEventListener('click', () => {
             document.getElementById('start-button').style.display = 'none'; document.getElementById('howto').style.display = 'none';
             gameActive = true;
             if (!bgMusic) { bgMusic = new Audio('music.mp3'); bgMusic.onended = () => { gameActive = false; updateBestScore(); document.getElementById('retry-button').style.display = 'block'; }; }
-            bgMusic.volume = volState; bgMusic.muted = isMuted; bgMusic.play().catch(() => {});
-            setInterval(() => { if (!gameActive) return; timeLeft--; const min = Math.floor(timeLeft / 60), sec = timeLeft % 60; document.getElementById('time-left').innerText = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`; if (timeLeft <= 0) gameActive = false; }, 1000);
-            spawnTimer = setInterval(() => { if(!gameActive) return; const m = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshBasicMaterial({ map: textures[Math.floor(Math.random() * 7)], transparent: true })); m.position.set((Math.random() - 0.5) * (window.innerWidth > window.innerHeight ? 8 : 4), 6, 0.5); scene.add(m); marshmallows.push(m); }, 800);
+            bgMusic.volume = volState; bgMusic.muted = isMuted; bgMusic.currentTime = 0; bgMusic.play().catch(() => {});
+            
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!gameActive) { clearInterval(timerInterval); return; }
+                timeLeft--;
+                const min = Math.floor(timeLeft / 60), sec = timeLeft % 60;
+                document.getElementById('time-left').innerText = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+                if (timeLeft <= 0) { gameActive = false; clearInterval(timerInterval); updateBestScore(); document.getElementById('retry-button').style.display = 'block'; }
+            }, 1000);
+
+            clearInterval(spawnTimer);
+            spawnTimer = setInterval(() => {
+                if(!gameActive) return;
+                const m = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshBasicMaterial({ map: textures[Math.floor(Math.random() * 7)], transparent: true }));
+                m.position.set((Math.random() - 0.5) * (window.innerWidth > window.innerHeight ? 8 : 4), 6, 0.5);
+                scene.add(m); marshmallows.push(m);
+            }, 800);
         });
         init();
         window.onresize = () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
