@@ -11,7 +11,6 @@
         #best-display { color: #ffff00; font-size: clamp(14px, 4vw, 24px); font-weight: bold; text-shadow: 0 0 5px #ff8800; margin-top: 5px; }
         #timer-display { color: #fff; font-size: 20px; margin-top: 8px; font-family: 'Courier New', Courier, monospace; letter-spacing: 2px; }
         
-        /* HOW TO パネル */
         #howto {
             position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
             color: #fff; text-align: center; z-index: 500; background: rgba(10, 10, 26, 0.85);
@@ -112,7 +111,12 @@
                 if(shadow) shadow.position.x = model.position.x;
             }
             marshmallows.forEach((m, i) => {
-                m.position.y -= 0.04;
+                // 【ヒラヒラ落ちる設定に書き換え】
+                m.position.y -= 0.025; // 落下速度
+                m.position.x += Math.sin(Date.now() / 400 + i) * 0.015; // 左右ゆらゆら
+                m.rotation.x += 0.08; // X軸回転
+                m.rotation.z += 0.02; // Z軸の傾き追加
+                
                 if (m.position.y < -2) { scene.remove(m); marshmallows.splice(i, 1); }
             });
             renderer.render(scene, camera);
@@ -136,25 +140,22 @@
             }
         }
 
-        // PCマウス操作
         window.addEventListener('mousemove', (e) => { mouse.x = (e.clientX / window.innerWidth) * 2 - 1; });
         window.addEventListener('mousedown', (e) => {
             if (e.target.tagName === 'BUTTON') return;
             performCatch(e.clientX, e.clientY);
         });
 
-        // スマホタッチ操作
         window.addEventListener('touchmove', (e) => {
             mouse.x = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
         }, { passive: false });
         window.addEventListener('touchstart', (e) => {
             if (e.target.tagName === 'BUTTON') return;
             const t = e.touches[0];
-            mouse.x = (t.clientX / window.innerWidth) * 2 - 1; // キャラクタ移動
-            performCatch(t.clientX, t.clientY); // キャッチ判定
+            mouse.x = (t.clientX / window.innerWidth) * 2 - 1;
+            performCatch(t.clientX, t.clientY);
         }, { passive: false });
 
-        // ボリューム切替
         document.getElementById('vol-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             volState = (volState === 0.1) ? 0.5 : 0.1;
@@ -169,11 +170,10 @@
             if (bgMusic) bgMusic.muted = isMuted;
         });
 
-        // ゲーム開始
         document.getElementById('start-button').addEventListener('click', (e) => {
             e.stopPropagation();
             document.getElementById('start-button').style.display = 'none';
-            document.getElementById('howto').style.display = 'none'; // HOW TOを確実に消す
+            document.getElementById('howto').style.display = 'none';
             gameActive = true;
             
             if (!bgMusic) {
