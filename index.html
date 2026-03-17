@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Marshmallow Night Debug V2</title>
+    <title>Marshmallow Night - Big Model</title>
     <style>
         body { margin: 0; overflow: hidden; background: #0a0a1a; font-family: sans-serif; touch-action: none; }
         #ui { position: absolute; width: 100%; text-align: center; top: 5%; pointer-events: none; z-index: 1000; }
         #score-display { color: #ffb7c5; font-size: clamp(20px, 6vw, 40px); font-weight: bold; text-shadow: 0 0 10px #ff00ff; margin: 0; }
         #best-display { color: #ffff00; font-size: clamp(14px, 4vw, 24px); font-weight: bold; text-shadow: 0 0 5px #ff8800; margin-top: 5px; }
         #timer-display { color: #fff; font-size: 20px; margin-top: 8px; font-family: 'Courier New', Courier, monospace; letter-spacing: 2px; }
-        #debug-info { position: absolute; bottom: 10px; left: 10px; color: #0f0; font-family: monospace; font-size: 14px; z-index: 3000; pointer-events: none; background: rgba(0,0,0,0.5); padding: 5px; }
         #howto { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); color: #fff; text-align: center; z-index: 500; background: rgba(10, 10, 26, 0.85); padding: 25px; border-radius: 20px; border: 2px solid #ffb7c5; width: 85%; max-width: 320px; pointer-events: none; }
         #controls { position: absolute; top: 10px; right: 10px; z-index: 2000; display: flex; gap: 5px; }
         .btn-mini { padding: 12px 15px; background: rgba(255, 183, 197, 0.4); border: 2px solid #ffb7c5; color: #fff; cursor: pointer; border-radius: 8px; font-size: 14px; font-weight: bold; }
@@ -28,7 +27,6 @@
         <div id="best-display">BEST:&nbsp;<span id="best-score">0</span></div>
         <div id="timer-display">TIME:&nbsp;<span id="time-left">03:31</span></div>
     </div>
-    <div id="debug-info">DEBUG: Initializing...</div>
     <div id="howto">
         <h2>HOW&nbsp;TO&nbsp;PLAY</h2>
         <p>降ってくる&nbsp;くぅちゃんの<br>大好きな<span style="color:#ffff00; font-weight:bold;">マカロン</span>を<br>クリックでキャッチ！</p>
@@ -62,8 +60,8 @@
             const saved = localStorage.getItem('marshmallow_high_score');
             if (saved) document.getElementById('best-score').innerText = saved;
             scene = new THREE.Scene(); scene.background = new THREE.Color(0x0a0a1a);
-            camera = new THREE.PerspectiveCamera(65, window.innerWidth/window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 1.5, 8); camera.lookAt(0, 1.2, 0); 
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 1.8, 5); camera.lookAt(0, 1.5, 0); // 🚩カメラを寄せて見やすく
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
@@ -71,30 +69,30 @@
             scene.add(new THREE.AmbientLight(0xffffff, 2.5));
             const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshBasicMaterial({ color: 0x112211 }));
             floor.rotation.x = -Math.PI/2; floor.position.y = -0.1; scene.add(floor);
-            shadow = new THREE.Mesh(new THREE.CircleGeometry(0.7, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.12 }));
+            shadow = new THREE.Mesh(new THREE.CircleGeometry(1.5, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.12 }));
             shadow.rotation.x = -Math.PI/2; shadow.position.y = -0.05; scene.add(shadow);
-            new GLTFLoader().load('model.glb', (gltf) => { model = gltf.scene; scene.add(model); });
+            new GLTFLoader().load('model.glb', (gltf) => { 
+                model = gltf.scene; 
+                model.scale.set(3.0, 3.0, 3.0); // 🚩モデルを3倍にデカく！
+                scene.add(model); 
+            });
             animate();
         }
 
         function animate() {
             requestAnimationFrame(animate);
             if (model) {
-                const limit = window.innerWidth > window.innerHeight ? 4.0 : 3.0;
+                const limit = window.innerWidth > window.innerHeight ? 4.5 : 3.0;
                 model.position.x += (mouse.x * limit - model.position.x) * 0.15;
                 if(shadow) shadow.position.x = model.position.x;
             }
             if (gameActive) {
-                let debugTxt = `Marshmallows: ${marshmallows.length}<br>`;
                 marshmallows.forEach((m, i) => {
-                    m.position.y -= 0.04;
+                    m.position.y -= 0.05; // 速度も少しアップ
                     m.position.x += Math.sin(Date.now() / 400 + i) * 0.015;
                     m.rotation.x += 0.08; m.rotation.z += 0.02;
-                    if (i === 0) debugTxt += `Lowest Y: ${m.position.y.toFixed(2)}`;
-                    // 🚩判定：絶対に消えないように -20 まで下げておきます
-                    if (m.position.y < -20) { scene.remove(m); marshmallows.splice(i, 1); }
+                    if (m.position.y < -10) { scene.remove(m); marshmallows.splice(i, 1); }
                 });
-                document.getElementById('debug-info').innerHTML = debugTxt;
             }
             renderer.render(scene, camera);
         }
@@ -104,10 +102,7 @@
             const ray = new THREE.Raycaster();
             const pos = new THREE.Vector2((x/window.innerWidth)*2-1, -(y/window.innerHeight)*2+1);
             ray.setFromCamera(pos, camera);
-            
-            // 🚩ここを 0.01 に！ 針の穴を通すレベルの精度にします。
-            // これで「勝手に消える」なら、プログラムの別の場所が犯人です。
-            ray.params.Mesh.threshold = 0.01; 
+            ray.params.Mesh.threshold = 0.25;
 
             const hits = ray.intersectObjects(marshmallows);
             if (hits.length > 0) {
@@ -142,10 +137,10 @@
             spawnTimer = setInterval(() => {
                 if(!gameActive) return;
                 const m = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshBasicMaterial({ map: textures[Math.floor(Math.random() * 7)], transparent: true }));
-                // 🚩さらに手前(z=3.0)に配置。これで絶対に頭には当たりません。
-                m.position.set((Math.random() - 0.5) * 10, 8, 3.0);
+                // 🚩モデルが大きいので、降ってくる位置も少し高く(y=10)、奥(z=0)に調整
+                m.position.set((Math.random() - 0.5) * (window.innerWidth > window.innerHeight ? 12 : 6), 10, 0);
                 scene.add(m); marshmallows.push(m);
-            }, 900);
+            }, 800);
         });
         init();
         window.onresize = () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
